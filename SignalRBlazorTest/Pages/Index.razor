@@ -1,0 +1,52 @@
+﻿@page "/"
+
+@using Microsoft.AspNetCore.SignalR.Client
+
+@implements IAsyncDisposable
+
+<input @bind-value="_message" @onkeyup="OnKeyUp" />
+
+@foreach (var message in _messages)
+{
+    <li>@message</li>
+}
+
+@code {
+
+    private string _message;
+
+    private List<string> _messages = new List<string>();
+
+    private HubConnection _hubConnection;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _hubConnection = new HubConnectionBuilder()
+            .WithUrl("http://localhost:5000/echo")
+            .Build();
+
+        _hubConnection.On("message", (string msg) =>
+        {
+            _messages.Add(msg);
+            StateHasChanged();
+        });
+
+        await _hubConnection.StartAsync();
+    }
+
+    private async Task OnKeyUp(KeyboardEventArgs args)
+    {
+        if (args.Key == "Enter")
+        {
+            await _hubConnection.SendAsync("message", _message);
+
+            _message = null;
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await _hubConnection.DisposeAsync();
+    }
+
+}
