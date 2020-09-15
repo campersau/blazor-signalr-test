@@ -1,6 +1,7 @@
 ﻿@page "/"
 
 @using Microsoft.AspNetCore.SignalR.Client
+@using Microsoft.Extensions.Logging
 
 @implements IAsyncDisposable
 
@@ -23,6 +24,10 @@
     {
         _hubConnection = new HubConnectionBuilder()
             .WithUrl("http://localhost:5000/echo")
+            .ConfigureLogging(loggerBuilder =>
+            {
+                loggerBuilder.AddProvider(new BrowserConsoleLoggerProvider());
+            })
             .Build();
 
         _hubConnection.On("message", (string msg) =>
@@ -47,6 +52,33 @@
     public async ValueTask DisposeAsync()
     {
         await _hubConnection.DisposeAsync();
+    }
+
+    private class BrowserConsoleLoggerProvider : ILoggerProvider
+    {
+        public ILogger CreateLogger(string categoryName) => new BrowserConsoleLogger(categoryName);
+
+        public void Dispose() { }
+    }
+
+    private class BrowserConsoleLogger : ILogger
+    {
+        private readonly string _categoryName;
+
+        public BrowserConsoleLogger(string categoryName)
+        {
+            _categoryName = categoryName;
+        }
+
+        public IDisposable BeginScope<TState>(TState state) => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
+        {
+            var message = $"{_categoryName}: {formatter(state, exception)}";
+            Console.WriteLine(message);
+        }
     }
 
 }
